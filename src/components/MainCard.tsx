@@ -18,7 +18,11 @@
     const [expiry, setExpiry] = useState('');
     const [zipcode, setZipcode] = useState('');
     const [isVerifying, setIsVerifying] = useState(false);
+    const [showVerificationContent, setShowVerificationContent] = useState(false);
     const [showCardType, setShowCardType] = useState(false);
+
+    // Animation for form content opacity
+    const formOpacity = useRef(new Animated.Value(1)).current;
 
     // Animation refs
     const arrowPosition = useRef(new Animated.Value(0)).current;
@@ -176,7 +180,7 @@
         
         // Start the animation sequence
         Animated.parallel([
-          // Move arrow to left and scale down
+          // Move arrow to the position where the blue dot will be
           Animated.timing(arrowPosition, {
             toValue: 1,
             duration: 500,
@@ -187,33 +191,61 @@
             duration: 300,
             useNativeDriver: true,
           }),
+          // Fade out form content as arrow moves
+          Animated.timing(formOpacity, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
         ]).start(() => {
-          // Fade out arrow and show dots
+          // Transform arrow into blue dot - smooth morphing
           Animated.parallel([
-            Animated.timing(arrowOpacity, {
-              toValue: 0,
-              duration: 200,
+            Animated.timing(arrowScale, {
+              toValue: 0.6,
+              duration: 300,
               useNativeDriver: true,
             }),
-            Animated.timing(dotsOpacity, {
+            Animated.timing(dot1Opacity, {
               toValue: 1,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.spring(dotsScale, {
-              toValue: 1,
-              tension: 100,
-              friction: 8,
+              duration: 300,
               useNativeDriver: true,
             }),
           ]).start(() => {
-            // Start dots animation immediately
-            startDotsAnimation();
+            // Fade out arrow as dot becomes visible
+            Animated.timing(arrowOpacity, {
+              toValue: 0,
+              duration: 150,
+              useNativeDriver: true,
+            }).start(() => {
+              // Show verification content
+              setShowVerificationContent(true);
+              
+              // Show other dots with a slight delay for smooth transition
+              setTimeout(() => {
+                Animated.parallel([
+                  Animated.timing(dotsOpacity, {
+                    toValue: 1,
+                    duration: 200,
+                    useNativeDriver: true,
+                  }),
+                  Animated.spring(dotsScale, {
+                    toValue: 1,
+                    tension: 100,
+                    friction: 8,
+                    useNativeDriver: true,
+                  }),
+                ]).start(() => {
+                  // Start dots animation sequence
+                  startDotsAnimation();
+                });
+              }, 100);
+            });
           });
         });
 
         setTimeout(() => {
           setIsVerifying(false);
+          setShowVerificationContent(false);
           // Reset animations
           resetAnimations();
           if (onCardVerified) {
@@ -233,8 +265,7 @@
     // Start dots animation sequence
     const startDotsAnimation = () => {
       console.log('Starting dots animation');
-      // Set initial state - first dot active, others dim
-      dot1Opacity.setValue(1);
+      // First dot is already active (transformed from arrow), others dim
       dot2Opacity.setValue(0.3);
       dot3Opacity.setValue(0.3);
 
@@ -316,6 +347,7 @@
       dot1Opacity.setValue(0.3);
       dot2Opacity.setValue(0.3);
       dot3Opacity.setValue(0.3);
+      formOpacity.setValue(1);
     };
 
     return (
@@ -330,7 +362,7 @@
                   {
                     translateX: arrowPosition.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [0, -150], 
+                      outputRange: [0, -180], // Move to blue dot position
                     }),
                   },
                   { scale: arrowScale },
@@ -344,28 +376,45 @@
               onPress={handleArrowPress}
               disabled={!isAllFieldsFilled || isVerifying}
             >
-              {/* Arrow Icon */}
-              <Animated.View style={{ opacity: arrowOpacity }}>
+              {/* Arrow Icon that transforms into first dot */}
+              <Animated.View 
+                style={[
+                  { 
+                    opacity: arrowOpacity,
+                    transform: [{ scale: arrowScale }],
+                  }
+                ]}
+              >
                 <Icon name="arrow-right" size={20} color="#FFF" />
               </Animated.View>
               
               {/* Dots Animation */}
-                          <Animated.View
-              style={[
-                styles.dotsOverlay,
-                {
-                  opacity: dotsOpacity,
-                  transform: [{ scale: dotsScale }],
-                },
-              ]}
-            >
+              <Animated.View
+                style={[
+                  styles.dotsOverlay,
+                  {
+                    opacity: dotsOpacity,
+                    transform: [{ scale: dotsScale }],
+                  },
+                ]}
+              >
                 <View style={styles.loadingIndicator}>
+                  {/* First dot positioned where arrow was */}
                   <Animated.View
                     style={[
                       styles.dot,
                       {
                         opacity: dot1Opacity,
-                        backgroundColor: '#FFF',
+                        backgroundColor: '#87CEEB', // Blue dot
+                        transform: [
+                          { scale: arrowScale },
+                          {
+                            translateX: arrowPosition.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0, -180], // Match arrow movement
+                            }),
+                          },
+                        ],
                       },
                     ]}
                   />
@@ -392,18 +441,18 @@
             </TouchableOpacity>
           </Animated.View>
 
-          {isVerifying ? (
+          {showVerificationContent ? (
             <View style={styles.loadingContainer}>
               <LoadingDots 
-                colors={['#E14434', '#FFF', '#E14434']}
+                colors={['#87CEEB', '#FFF', '#E14434']}
                 dots={3}
-                size={12}
+                size={14}
                 bounceHeight={8}
               />
               <Text style={styles.loadingText}>Verifying your card</Text>
             </View>
           ) : (
-            <>
+            <Animated.View style={{ opacity: formOpacity }}>
               <View style={styles.row}>
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Card Number</Text>
@@ -497,7 +546,7 @@
                   </View>
                 ) : null}
               </View>
-            </>
+            </Animated.View>
           )}
         </View>
       </View>
