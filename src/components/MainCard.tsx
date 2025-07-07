@@ -43,43 +43,36 @@
 
     // Validate and format card number with spaces (1111 1111 1111 1111)
     const formatCardNumber = (text: string) => {
-      // Remove all non-digit characters
       const cleaned = text.replace(/\D/g, '');
-      // Add spaces every 4 digits
       const formatted = cleaned.replace(/(\d{4})(?=\d)/g, '$1 ');
       return formatted;
     };
 
     // Validate and format expiry date with automatic "/" insertion
     const formatExpiryDate = (text: string) => {
-      // Remove all non-digit characters
       const cleaned = text.replace(/\D/g, '');
       
       if (cleaned.length <= 2) {
         return cleaned;
       } else {
-        // Insert "/" after month
         return cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4);
       }
     };
 
     // Validate card holder name (only letters and spaces)
     const validateCardHolderName = (text: string) => {
-      // Only allow letters, spaces, and common name characters
       const cleaned = text.replace(/[^a-zA-Z\s\-'\.]/g, '');
       return cleaned;
     };
 
     // Validate CVV (only digits)
     const validateCvv = (text: string) => {
-      // Only allow digits
       const cleaned = text.replace(/\D/g, '');
       return cleaned;
     };
 
     // Validate zipcode (only digits)
     const validateZipcode = (text: string) => {
-      // Only allow digits
       const cleaned = text.replace(/\D/g, '');
       return cleaned;
     };
@@ -98,12 +91,12 @@
       if (month < 1 || month > 12) return false;
       
       // Validate year (current year onwards)
-      const currentYear = 25; // Since today is 07/25
+      const currentYear = 25; 
       if (year < currentYear) return false;
       
       // Validate if it's current year, check if month is not in the past
       if (year === currentYear) {
-        const currentMonth = 7; // July
+        const currentMonth = 7; 
         if (month < currentMonth) return false;
       }
       
@@ -115,9 +108,12 @@
       const formatted = formatCardNumber(text);
       setCardNumber(formatted);
       
-      // Auto-focus to CVV when card number is complete
+      // Show VISA text when card number reaches 16 digits
       if (formatted.replace(/\s/g, '').length === 16) {
+        setShowCardType(true);
         cvvRef.current?.focus();
+      } else {
+        setShowCardType(false);
       }
     };
 
@@ -362,7 +358,7 @@
                   {
                     translateX: arrowPosition.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [0, -180], // Move to blue dot position
+                      outputRange: [0, -180], 
                     }),
                   },
                   { scale: arrowScale },
@@ -498,6 +494,7 @@
                   autoCapitalize="words"
                   maxLength={20}
                   returnKeyType="next"
+                  onSubmitEditing={() => expiryRef.current?.focus()}
                 />
                 <Text style={styles.characterCount}>
                   {cardHolderName.length}/20
