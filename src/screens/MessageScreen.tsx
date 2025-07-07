@@ -7,12 +7,14 @@ import {
   Animated,
   Dimensions,
   Pressable,
+  Easing,
 } from 'react-native';
 import React, { useState, useRef, useEffect } from 'react';
 import AddCard from '../components/AddCard';
 import OrderDetails from '../components/OrderDetails';
 import MainCard from '../components/MainCard';
-import CustomBottomSheet from '../components/CustomBottomSheet';
+import FullScreenBottomSheet from '../components/FullScreenBottomSheet';
+import { useDotAnimation } from '../hooks/useDotAnimation';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -25,17 +27,129 @@ interface SavedCard {
   zipcode: string;
 }
 
+const CARD_WIDTH = 350;
+const CARD_MARGIN = 20; // marginHorizontal: 10 on each side
+const CARD_FULL_WIDTH = CARD_WIDTH + CARD_MARGIN;
+
+const BottomSheetContent = ({ onComplete }: { onComplete: () => void }) => {
+  const [completed, setCompleted] = useState(false);
+  const { dot1Opacity, dot2Opacity, dot3Opacity } = useDotAnimation({
+    animationDuration: 400,
+    autoStart: true,
+    onAnimationComplete: undefined,
+    stopAfter: undefined,
+  });
+
+  // Animation for completed icon
+  const completedAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (completed) {
+      Animated.timing(completedAnim, {
+        toValue: 1,
+        duration: 600,
+        easing: Easing.out(Easing.exp),
+        useNativeDriver: true,
+      }).start();
+      timer = setTimeout(onComplete, 1500);
+    } else {
+      timer = setTimeout(() => {
+        setCompleted(true);
+      }, 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [completed, completedAnim, onComplete]);
+
+  if (completed) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Animated.View
+          style={{
+            marginBottom: 24,
+            transform: [
+              {
+                scale: completedAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.5, 1],
+                }),
+              },
+            ],
+            opacity: completedAnim,
+          }}
+        >
+          <View
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 36,
+              backgroundColor: '#fff',
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOpacity: 0.15,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 6,
+            }}
+          >
+            <Text style={{ fontSize: 44, color: '#4BB543' }}>✓</Text>
+          </View>
+        </Animated.View>
+        <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>Payment Completed!</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 24 }}>Payment Processing</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', height: 40 }}>
+        <Animated.View
+          style={{
+            width: 14,
+            height: 14,
+            borderRadius: 7,
+            marginHorizontal: 8,
+            backgroundColor: '#fff',
+            opacity: dot1Opacity,
+          }}
+        />
+        <Animated.View
+          style={{
+            width: 14,
+            height: 14,
+            borderRadius: 7,
+            marginHorizontal: 8,
+            backgroundColor: '#fff',
+            opacity: dot2Opacity,
+          }}
+        />
+        <Animated.View
+          style={{
+            width: 14,
+            height: 14,
+            borderRadius: 7,
+            marginHorizontal: 8,
+            backgroundColor: '#fff',
+            opacity: dot3Opacity,
+          }}
+        />
+      </View>
+    </View>
+  );
+};
+
 const MessageScreen = () => {
   const [showMainCard, setShowMainCard] = useState(false);
-  const [showPaymentSheet, setShowPaymentSheet] = useState(false);
   const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isAddCardVisible, setIsAddCardVisible] = useState(false);
   const [lastAddedCardId, setLastAddedCardId] = useState<string | null>(null);
+  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const sheetAnim = useRef(new Animated.Value(0)).current;
 
   // Animation refs for new card
   const newCardAnim = useRef(new Animated.Value(0)).current;
@@ -67,40 +181,22 @@ const MessageScreen = () => {
     scaleAnim.setValue(0.8);
   };
 
+  // Button color logic
+  const isAddCardCurrentlyVisible = currentCardIndex === savedCards.length;
+  const payNowButtonColor = isAddCardCurrentlyVisible ? '#87A2FF' : '#E14434';
+
   const handlePayNowPress = () => {
-    if (savedCards.length === 0) {
-      console.log('No saved cards available for payment');
-      return;
+    // Only open the bottom sheet if a real card is selected
+    if (currentCardIndex !== savedCards.length) {
+      setBottomSheetVisible(true);
     }
-    setShowPaymentSheet(true);
-    Animated.timing(sheetAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
   };
 
-  const handlePaymentCompleted = () => {
-    // Handle payment completion
-    console.log('Payment completed successfully!');
-
-    Animated.timing(sheetAnim, {
-      toValue: 0,
-      duration: 400,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowPaymentSheet(false);
-    });
-  };
-
+  // Update currentCardIndex based on scroll position
   const handleScroll = (event: any) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const scrollX = contentOffset.x;
-    const screenWidth = layoutMeasurement.width;
-    const totalWidth = contentSize.width;
-
-    const addCardPosition = totalWidth - screenWidth;
-    setIsAddCardVisible(scrollX >= addCardPosition - 50);
+    const { contentOffset } = event.nativeEvent;
+    const index = Math.round(contentOffset.x / CARD_FULL_WIDTH);
+    setCurrentCardIndex(index);
   };
 
   useEffect(() => {
@@ -246,12 +342,7 @@ const MessageScreen = () => {
         <TouchableOpacity
           style={[
             styles.button,
-            {
-              backgroundColor:
-                savedCards.length === 0
-                  ? '#87A2FF'
-                  : '#E6521F',
-            },
+            { backgroundColor: payNowButtonColor },
           ]}
           onPress={handlePayNowPress}
         >
@@ -260,27 +351,12 @@ const MessageScreen = () => {
           </Text>
         </TouchableOpacity>
       </View>
-
-      {/* Payment Processing Sheet */}
-      {showPaymentSheet && (
-        <Animated.View
-          style={[
-            styles.paymentSheetContainer,
-            {
-              opacity: sheetAnim,
-            },
-          ]}
-        >
-          <CustomBottomSheet
-            message="Processing payment..."
-            backgroundColor="#E6521F"
-            dotColor="#E8F5E8"
-            activeDotColor="#4CAF50"
-            stopAfter={6000}
-            onCompleted={handlePaymentCompleted}
-          />
-        </Animated.View>
-      )}
+      <FullScreenBottomSheet
+        visible={bottomSheetVisible}
+        onClose={() => setBottomSheetVisible(false)}
+      >
+        <BottomSheetContent onComplete={() => setBottomSheetVisible(false)} />
+      </FullScreenBottomSheet>
     </View>
   );
 };
@@ -407,13 +483,5 @@ const styles = StyleSheet.create({
   },
   mainCardContainer: {
     alignItems: 'center',
-  },
-  paymentSheetContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1000,
   },
 });

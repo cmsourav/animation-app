@@ -228,7 +228,7 @@ const MainCard = ({ onCardVerified }: MainCardProps) => {
   return (
     <View>
       <View style={styles.addCardContainer}>
-      <Animated.View style={[styles.arrowButton, arrowStyle]}>
+      <Animated.View style={[styles.arrowButton, arrowStyle, {backgroundColor: isAllFieldsFilled ? '#E14434' : '#666666'}]}>
           <Pressable onPress={handleArrowPress}>
             <Icon name="arrow-right" size={20} color="#FFF" />
           </Pressable>
