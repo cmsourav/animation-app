@@ -28,7 +28,7 @@ interface SavedCard {
 }
 
 const CARD_WIDTH = 350;
-const CARD_MARGIN = 20; // marginHorizontal: 10 on each side
+const CARD_MARGIN = 20; 
 const CARD_FULL_WIDTH = CARD_WIDTH + CARD_MARGIN;
 
 const BottomSheetContent = ({ onComplete }: { onComplete: () => void }) => {
@@ -40,7 +40,6 @@ const BottomSheetContent = ({ onComplete }: { onComplete: () => void }) => {
     stopAfter: undefined,
   });
 
-  // Animation for completed icon
   const completedAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -151,7 +150,6 @@ const MessageScreen = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
-  // Animation refs for new card
   const newCardAnim = useRef(new Animated.Value(0)).current;
   const newCardScale = useRef(new Animated.Value(0.8)).current;
 
@@ -181,18 +179,15 @@ const MessageScreen = () => {
     scaleAnim.setValue(0.8);
   };
 
-  // Button color logic
   const isAddCardCurrentlyVisible = currentCardIndex === savedCards.length;
   const payNowButtonColor = isAddCardCurrentlyVisible ? '#87A2FF' : '#E14434';
 
   const handlePayNowPress = () => {
-    // Only open the bottom sheet if a real card is selected
     if (currentCardIndex !== savedCards.length) {
       setBottomSheetVisible(true);
     }
   };
 
-  // Update currentCardIndex based on scroll position
   const handleScroll = (event: any) => {
     const { contentOffset } = event.nativeEvent;
     const index = Math.round(contentOffset.x / CARD_FULL_WIDTH);
@@ -266,7 +261,7 @@ const MessageScreen = () => {
         </Animated.View>
       );
     }
-    // Default rendering for other cards
+      
     return (
       <View style={styles.savedCardContainer}>
         <View style={styles.row}>

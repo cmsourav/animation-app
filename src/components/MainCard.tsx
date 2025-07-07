@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Pressable } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { MainCardProps } from '../../types/CardProps';
@@ -11,6 +11,7 @@ import Animated, {
   withDelay,
   interpolateColor,
 } from 'react-native-reanimated';
+import { Animated as RNAnimated } from 'react-native';
 
 const MainCard = ({ onCardVerified }: MainCardProps) => {
   const [cardNumber, setCardNumber] = useState('');
@@ -43,6 +44,19 @@ const MainCard = ({ onCardVerified }: MainCardProps) => {
   const START_RIGHT_OFFSET = -24;
 
   const DOT_MOVE_DISTANCE = -((CARD_WIDTH / 2) - DOT_GROUP_WIDTH / 2 + Math.abs(START_RIGHT_OFFSET));
+
+  const visaAnim = useRef(new RNAnimated.Value(0)).current;
+  useEffect(() => {
+    if (showCardType) {
+      RNAnimated.timing(visaAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      visaAnim.setValue(0);
+    }
+  }, [showCardType, visaAnim]);
 
   const formatCardNumber = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
@@ -334,9 +348,24 @@ const MainCard = ({ onCardVerified }: MainCardProps) => {
                 </View>
               </View>
               {showCardType ? (
-                <View style={styles.cardBadge}>
+                <RNAnimated.View
+                  style={[
+                    styles.cardBadge,
+                    {
+                      opacity: visaAnim,
+                      transform: [
+                        {
+                          scale: visaAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.7, 1],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
                   <Text style={styles.cardBadgeText}>VISA</Text>
-                </View>
+                </RNAnimated.View>
               ) : null}
             </View>
           </>
